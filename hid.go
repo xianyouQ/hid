@@ -20,6 +20,9 @@ type DeviceInfo struct {
 	// Product contains the product name of the device
 	Product string
 
+	UsagePage uint16
+	Usage     uint16
+
 	InputReportLength   uint16
 	OutputReportLength  uint16
 	FeatureReportLength uint16

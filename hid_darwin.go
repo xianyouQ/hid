@@ -240,6 +240,8 @@ func Devices() []*DeviceInfo {
 			VersionNumber:       uint16(getIntProp(device, cfstring(C.kIOHIDVersionNumberKey))),
 			Manufacturer:        getStringProp(device, cfstring(C.kIOHIDManufacturerKey)),
 			Product:             getStringProp(device, cfstring(C.kIOHIDProductKey)),
+			UsagePage:           uint16(getIntProp(device, cfstring(C.kIOHIDPrimaryUsagePageKey))),
+			Usage:               uint16(getIntProp(device, cfstring(C.kIOHIDPrimaryUsageKey))),
 			InputReportLength:   uint16(getIntProp(device, cfstring(C.kIOHIDMaxInputReportSizeKey))),
 			OutputReportLength:  uint16(getIntProp(device, cfstring(C.kIOHIDMaxOutputReportSizeKey))),
 			FeatureReportLength: uint16(getIntProp(device, cfstring(C.kIOHIDMaxFeatureReportSizeKey))),
