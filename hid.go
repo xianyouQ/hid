@@ -42,30 +42,25 @@ type Device interface {
 }
 
 // FindDevices iterates through all devices with a given vendor and product id
-func FindDevices(vendor uint16, product uint16) <-chan *DeviceInfo {
-	result := make(chan *DeviceInfo)
-	go func() {
-		for dev := range Devices() {
-			if dev.VendorId == vendor && dev.ProductId == product {
-				result <- dev
-			}
+func FindDevices(vendor uint16, product uint16) []*DeviceInfo {
+	var result []*DeviceInfo
+	for _, dev := range Devices() {
+		if dev.VendorId == vendor && dev.ProductId == product {
+			result = append(result, dev)
 		}
-		close(result)
-	}()
+	}
 	return result
 }
 
 // FindDevicesByProduct iterates through all devices with a given vendor and product id
-func FindDevicesByProduct(product string) <-chan *DeviceInfo {
-	result := make(chan *DeviceInfo)
+func FindDevicesByProduct(product string) []*DeviceInfo {
+	var result []*DeviceInfo
 
-	go func() {
-		for dev := range Devices() {
-			if strings.Contains(dev.Product, product)  {
-				result <- dev
-			}
+	for _, dev := range Devices() {
+		if strings.Contains(dev.Product, product) {
+			result = append(result, dev)
 		}
-	}()
+	}
 
 	return result
 }

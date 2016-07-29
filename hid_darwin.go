@@ -231,30 +231,27 @@ func iterateDevices(action func(device C.IOHIDDeviceRef) bool) cleanupDeviceMana
 	}
 }
 
-func Devices() <-chan *DeviceInfo {
-	result := make(chan *DeviceInfo)
-	go func() {
-		iterateDevices(func(device C.IOHIDDeviceRef) bool {
-			result <- &DeviceInfo{
-				VendorId:            uint16(getIntProp(device, cfstring(C.kIOHIDVendorIDKey))),
-				ProductId:           uint16(getIntProp(device, cfstring(C.kIOHIDProductIDKey))),
-				VersionNumber:       uint16(getIntProp(device, cfstring(C.kIOHIDVersionNumberKey))),
-				Manufacturer:        getStringProp(device, cfstring(C.kIOHIDManufacturerKey)),
-				Product:             getStringProp(device, cfstring(C.kIOHIDProductKey)),
-				InputReportLength:   uint16(getIntProp(device, cfstring(C.kIOHIDMaxInputReportSizeKey))),
-				OutputReportLength:  uint16(getIntProp(device, cfstring(C.kIOHIDMaxOutputReportSizeKey))),
-				FeatureReportLength: uint16(getIntProp(device, cfstring(C.kIOHIDMaxFeatureReportSizeKey))),
-				Path:                getPath(device),
-			}
-			return true
-		})()
-		close(result)
-	}()
+func Devices() []*DeviceInfo {
+	var result []*DeviceInfo
+	iterateDevices(func(device C.IOHIDDeviceRef) bool {
+		result = append(result, &DeviceInfo{
+			VendorId:            uint16(getIntProp(device, cfstring(C.kIOHIDVendorIDKey))),
+			ProductId:           uint16(getIntProp(device, cfstring(C.kIOHIDProductIDKey))),
+			VersionNumber:       uint16(getIntProp(device, cfstring(C.kIOHIDVersionNumberKey))),
+			Manufacturer:        getStringProp(device, cfstring(C.kIOHIDManufacturerKey)),
+			Product:             getStringProp(device, cfstring(C.kIOHIDProductKey)),
+			InputReportLength:   uint16(getIntProp(device, cfstring(C.kIOHIDMaxInputReportSizeKey))),
+			OutputReportLength:  uint16(getIntProp(device, cfstring(C.kIOHIDMaxOutputReportSizeKey))),
+			FeatureReportLength: uint16(getIntProp(device, cfstring(C.kIOHIDMaxFeatureReportSizeKey))),
+			Path:                getPath(device),
+		})
+		return true
+	})()
 	return result
 }
 
 func ByPath(path string) (*DeviceInfo, error) {
-	for d := range Devices() {
+	for _, d := range Devices() {
 		if d.Path == path {
 			return d, nil
 		}

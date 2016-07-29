@@ -23,31 +23,27 @@ func init() {
 	C.libusb_init(nil)
 }
 
-func Devices() <-chan *DeviceInfo {
-	result := make(chan *DeviceInfo)
-	go func() {
-		var devices **C.struct_libusb_device
-		cnt := C.libusb_get_device_list(nil, &devices)
-		if cnt < 0 {
-			close(result)
-			return
+func Devices() []*DeviceInfo {
+	var result []*DeviceInfo
+	var devices **C.struct_libusb_device
+	cnt := C.libusb_get_device_list(nil, &devices)
+	if cnt < 0 {
+		return nil
+	}
+	defer C.libusb_free_device_list(devices, 1)
+	for _, dev := range asSlice(devices, cnt) {
+		di, err := newDeviceInfo(dev)
+		if err != nil {
+			continue
 		}
-		defer C.libusb_free_device_list(devices, 1)
-		for _, dev := range asSlice(devices, cnt) {
-			di, err := newDeviceInfo(dev)
-			if err != nil {
-				continue
-			}
-			result <- di
-		}
+		result = append(result, di)
+	}
 
-		close(result)
-	}()
 	return result
 }
 
 func ByPath(path string) (*DeviceInfo, error) {
-	for d := range Devices() {
+	for _, d := range Devices() {
 		if d.Path == path {
 			return d, nil
 		}

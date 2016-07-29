@@ -218,30 +218,27 @@ func ByPath(devicePath string) (*DeviceInfo, error) {
 }
 
 // Devices returns all HID devices which are connected to the system.
-func Devices() <-chan *DeviceInfo {
-	result := make(chan *DeviceInfo)
-	go func() {
-		var InterfaceClassGuid C.GUID
-		C.HidD_GetHidGuid(&InterfaceClassGuid)
-		deviceInfoSet := C.SetupDiGetClassDevsA(&InterfaceClassGuid, nil, nil, C.DIGCF_PRESENT|C.DIGCF_DEVICEINTERFACE)
-		defer C.SetupDiDestroyDeviceInfoList(deviceInfoSet)
+func Devices() []*DeviceInfo {
+	var result *DeviceInfo
+	var InterfaceClassGuid C.GUID
+	C.HidD_GetHidGuid(&InterfaceClassGuid)
+	deviceInfoSet := C.SetupDiGetClassDevsA(&InterfaceClassGuid, nil, nil, C.DIGCF_PRESENT|C.DIGCF_DEVICEINTERFACE)
+	defer C.SetupDiDestroyDeviceInfoList(deviceInfoSet)
 
-		var deviceIdx C.DWORD = 0
-		var deviceInterfaceData C.SP_DEVICE_INTERFACE_DATA
-		deviceInterfaceData.cbSize = C.DWORD(unsafe.Sizeof(deviceInterfaceData))
+	var deviceIdx C.DWORD = 0
+	var deviceInterfaceData C.SP_DEVICE_INTERFACE_DATA
+	deviceInterfaceData.cbSize = C.DWORD(unsafe.Sizeof(deviceInterfaceData))
 
-		for ; ; deviceIdx++ {
-			res := C.SetupDiEnumDeviceInterfaces(deviceInfoSet, nil, &InterfaceClassGuid, deviceIdx, &deviceInterfaceData)
-			if res == 0 {
-				break
-			}
-			di := getDeviceDetails(deviceInfoSet, &deviceInterfaceData)
-			if di != nil {
-				result <- di
-			}
+	for ; ; deviceIdx++ {
+		res := C.SetupDiEnumDeviceInterfaces(deviceInfoSet, nil, &InterfaceClassGuid, deviceIdx, &deviceInterfaceData)
+		if res == 0 {
+			break
 		}
-		close(result)
-	}()
+		di := getDeviceDetails(deviceInfoSet, &deviceInterfaceData)
+		if di != nil {
+			result = append(result, di)
+		}
+	}
 	return result
 }
 
