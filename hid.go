@@ -37,6 +37,8 @@ type Device interface {
 	WriteFeature([]byte) error
 	// Preform an interrupt transfer to the device
 	WriteInterrupt(byte, []byte) (int, error)
+
+	ReadCh() <-chan []byte
 }
 
 // FindDevices iterates through all devices with a given vendor and product id

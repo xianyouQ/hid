@@ -14,7 +14,10 @@ static inline CFIndex cfstring_utf8_length(CFStringRef str, CFIndex *need) {
   return CFStringGetBytes(str, rng, kCFStringEncodingUTF8, 0, 0, NULL, 0, need);
 }
 
-void deviceUnpluged(IOHIDDeviceRef osd, IOReturn ret, void* dev);
+void deviceUnplugged(IOHIDDeviceRef osd, IOReturn ret, void *dev);
+
+void reportCallback(void *context, IOReturn result, void *sender, IOHIDReportType report_type, uint32_t report_id, uint8_t *report, CFIndex report_length);
+
 */
 import "C"
 
@@ -22,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"unsafe"
 )
 
@@ -108,7 +112,7 @@ func ioReturnToErr(ret C.IOReturn) error {
 	case C.kIOReturnNoMedia:
 		return errors.New("media not present")
 	case C.kIOReturnUnformattedMedia:
-		return errors.New("edia not formatted")
+		return errors.New("media not formatted")
 	case C.kIOReturnUnsupportedMode:
 		return errors.New("no such mode")
 	case C.kIOReturnUnderrun:
@@ -135,11 +139,20 @@ func ioReturnToErr(ret C.IOReturn) error {
 	return errors.New("Unknown error")
 }
 
+var deviceCtxMtx sync.Mutex
+var deviceCtx = make(map[C.IOHIDDeviceRef]*osxDevice)
+
 type cleanupDeviceManagerFn func()
 type osxDevice struct {
 	osDevice     C.IOHIDDeviceRef
 	disconnected bool
 	closeDM      cleanupDeviceManagerFn
+
+	readSetup  sync.Once
+	readCh     chan []byte
+	readBufLen uint16
+	readBuf    unsafe.Pointer
+	runLoop    C.CFRunLoopRef
 }
 
 func cfstring(s string) C.CFStringRef {
@@ -259,7 +272,10 @@ func (di *DeviceInfo) Open() (Device, error) {
 				C.CFRetain(C.CFTypeRef(device))
 				dev = &osxDevice{osDevice: device}
 				err = nil
-				C.IOHIDDeviceRegisterRemovalCallback(device, (C.IOHIDCallback)(unsafe.Pointer(C.deviceUnpluged)), unsafe.Pointer(dev))
+				deviceCtxMtx.Lock()
+				deviceCtx[device] = dev
+				deviceCtxMtx.Unlock()
+				C.IOHIDDeviceRegisterRemovalCallback(device, (C.IOHIDCallback)(unsafe.Pointer(C.deviceUnplugged)), nil)
 			} else {
 				err = ioReturnToErr(res)
 			}
@@ -269,26 +285,40 @@ func (di *DeviceInfo) Open() (Device, error) {
 	})
 	if dev != nil {
 		dev.closeDM = closeDM
+		dev.readBufLen = di.InputReportLength
+		dev.readBuf = C.malloc(C.size_t(dev.readBufLen))
 	}
 
 	return dev, err
 }
 
-//export deviceUnpluged
-func deviceUnpluged(osdev C.IOHIDDeviceRef, result C.IOReturn, dev unsafe.Pointer) {
-	od := (*osxDevice)(dev)
+//export deviceUnplugged
+func deviceUnplugged(osdev C.IOHIDDeviceRef, result C.IOReturn, dev unsafe.Pointer) {
+	deviceCtxMtx.Lock()
+	od := deviceCtx[osdev]
+	deviceCtxMtx.Unlock()
 	od.disconnected = true
 	od.Close()
 }
 
 func (dev *osxDevice) Close() {
+	if !dev.disconnected && dev.readCh != nil {
+		C.IOHIDDeviceRegisterInputReportCallback(dev.osDevice, (*C.uint8_t)(dev.readBuf), C.CFIndex(dev.readBufLen), nil, unsafe.Pointer(dev.osDevice))
+		C.IOHIDDeviceUnscheduleFromRunLoop(dev.osDevice, dev.runLoop, C.kCFRunLoopCommonModes)
+		C.CFRunLoopStop(dev.runLoop)
+		C.free(dev.readBuf)
+	}
 	if !dev.disconnected {
+		C.IOHIDDeviceRegisterRemovalCallback(dev.osDevice, nil, nil)
 		C.IOHIDDeviceClose(dev.osDevice, C.kIOHIDOptionsTypeSeizeDevice)
 		dev.disconnected = true
 	}
 	if dev.osDevice != nil {
 		C.CFRelease(C.CFTypeRef(dev.osDevice))
 		dev.osDevice = nil
+		deviceCtxMtx.Lock()
+		delete(deviceCtx, dev.osDevice)
+		deviceCtxMtx.Unlock()
 	}
 	if dev.closeDM != nil {
 		dev.closeDM()
@@ -325,4 +355,35 @@ func (dev *osxDevice) Write(data []byte) error {
 
 func (dev *osxDevice) WriteInterrupt(endpoint byte, data []byte) (int, error) {
 	return 0, errors.New("WriteInterrupt is not implemented")
+}
+
+func (dev *osxDevice) ReadCh() <-chan []byte {
+	dev.readSetup.Do(dev.startReadThread)
+	return dev.readCh
+}
+
+func (dev *osxDevice) startReadThread() {
+	dev.readCh = make(chan []byte, 30)
+	go func() {
+		dev.runLoop = C.CFRunLoopGetCurrent()
+		C.IOHIDDeviceScheduleWithRunLoop(dev.osDevice, dev.runLoop, C.kCFRunLoopCommonModes)
+		C.IOHIDDeviceRegisterInputReportCallback(dev.osDevice, (*C.uint8_t)(dev.readBuf), C.CFIndex(dev.readBufLen), (C.IOHIDReportCallback)(unsafe.Pointer(C.reportCallback)), unsafe.Pointer(dev.osDevice))
+		C.CFRunLoopRun()
+		close(dev.readCh)
+	}()
+}
+
+//export reportCallback
+func reportCallback(context unsafe.Pointer, result C.IOReturn, sender unsafe.Pointer, reportType C.IOHIDReportType, reportID uint32, report *C.uint8_t, reportLength C.CFIndex) {
+	deviceCtxMtx.Lock()
+	dev := deviceCtx[(C.IOHIDDeviceRef)(context)]
+	deviceCtxMtx.Unlock()
+	data := C.GoBytes(unsafe.Pointer(report), C.int(reportLength))
+
+	// readCh is buffered, drop the data if we can't send to avoid blocking the
+	// run loop
+	select {
+	case dev.readCh <- data:
+	default:
+	}
 }
