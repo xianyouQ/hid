@@ -235,17 +235,16 @@ func Devices() ([]*DeviceInfo, error) {
 	var result []*DeviceInfo
 	iterateDevices(func(device C.IOHIDDeviceRef) bool {
 		result = append(result, &DeviceInfo{
-			VendorId:            uint16(getIntProp(device, cfstring(C.kIOHIDVendorIDKey))),
-			ProductId:           uint16(getIntProp(device, cfstring(C.kIOHIDProductIDKey))),
-			VersionNumber:       uint16(getIntProp(device, cfstring(C.kIOHIDVersionNumberKey))),
-			Manufacturer:        getStringProp(device, cfstring(C.kIOHIDManufacturerKey)),
-			Product:             getStringProp(device, cfstring(C.kIOHIDProductKey)),
-			UsagePage:           uint16(getIntProp(device, cfstring(C.kIOHIDPrimaryUsagePageKey))),
-			Usage:               uint16(getIntProp(device, cfstring(C.kIOHIDPrimaryUsageKey))),
-			InputReportLength:   uint16(getIntProp(device, cfstring(C.kIOHIDMaxInputReportSizeKey))),
-			OutputReportLength:  uint16(getIntProp(device, cfstring(C.kIOHIDMaxOutputReportSizeKey))),
-			FeatureReportLength: uint16(getIntProp(device, cfstring(C.kIOHIDMaxFeatureReportSizeKey))),
-			Path:                getPath(device),
+			VendorID:           uint16(getIntProp(device, cfstring(C.kIOHIDVendorIDKey))),
+			ProductID:          uint16(getIntProp(device, cfstring(C.kIOHIDProductIDKey))),
+			VersionNumber:      uint16(getIntProp(device, cfstring(C.kIOHIDVersionNumberKey))),
+			Manufacturer:       getStringProp(device, cfstring(C.kIOHIDManufacturerKey)),
+			Product:            getStringProp(device, cfstring(C.kIOHIDProductKey)),
+			UsagePage:          uint16(getIntProp(device, cfstring(C.kIOHIDPrimaryUsagePageKey))),
+			Usage:              uint16(getIntProp(device, cfstring(C.kIOHIDPrimaryUsageKey))),
+			InputReportLength:  uint16(getIntProp(device, cfstring(C.kIOHIDMaxInputReportSizeKey))),
+			OutputReportLength: uint16(getIntProp(device, cfstring(C.kIOHIDMaxOutputReportSizeKey))),
+			Path:               getPath(device),
 		})
 		return true
 	})()

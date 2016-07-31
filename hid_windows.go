@@ -172,8 +172,8 @@ func ByPath(devicePath string) (*DeviceInfo, error) {
 	attrs.Size = C.DWORD(unsafe.Sizeof(attrs))
 	C.HidD_GetAttributes(dev.h(), &attrs)
 
-	devInfo.VendorId = uint16(attrs.VendorID)
-	devInfo.ProductId = uint16(attrs.ProductID)
+	devInfo.VendorID = uint16(attrs.VendorID)
+	devInfo.ProductID = uint16(attrs.ProductID)
 	devInfo.VersionNumber = uint16(attrs.VersionNumber)
 
 	const bufLen = 256
@@ -191,7 +191,6 @@ func ByPath(devicePath string) (*DeviceInfo, error) {
 
 		if C.HidP_GetCaps(preparsedData, &caps) == C.HIDP_STATUS_SUCCESS {
 			devInfo.InputReportLength = uint16(caps.InputReportByteLength)
-			devInfo.FeatureReportLength = uint16(caps.FeatureReportByteLength)
 			devInfo.OutputReportLength = uint16(caps.OutputReportByteLength)
 		}
 
