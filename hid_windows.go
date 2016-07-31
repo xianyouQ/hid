@@ -66,22 +66,6 @@ func (d *winDevice) Write(data []byte) error {
 	return nil
 }
 
-func (d *winDevice) WriteFeature(data []byte) error {
-	// ensure the correct amount of data
-	buffer := make([]byte, d.info.FeatureReportLength, d.info.FeatureReportLength)
-	copy(buffer, data)
-
-	if C.HidD_SetFeature(d.h(), unsafe.Pointer(&buffer[0]), C.DWORD(len(buffer))) != 0 {
-		return nil
-	} else {
-		return syscall.GetLastError()
-	}
-}
-
-func (d *winDevice) WriteInterrupt(endpoint byte, data []byte) (int, error) {
-	return 0, errors.New("WriteInterrupt is not implemented")
-}
-
 type callCFn func(buf unsafe.Pointer, bufSize *C.DWORD) unsafe.Pointer
 
 // simple helper function for this windows

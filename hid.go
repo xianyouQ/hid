@@ -1,9 +1,5 @@
-// HID package to access Human Interface Devices.
-// The platform specific parts of this package are heavily based on
-// Signal 11 - HIDAPI. (https://github.com/signal11/hidapi)
+// Package hid provides access to Human Interface Devices.
 package hid
-
-import "strings"
 
 // DeviceInfo provides general information about a device
 type DeviceInfo struct {
@@ -32,38 +28,10 @@ type DeviceInfo struct {
 type Device interface {
 	// Close closes the device and release all keept resources.
 	Close()
-	// Write to the device
-	// (technically a HID report with type 'output' is send to the device)
+
+	// Write writes and output report to device.
 	Write([]byte) error
-	// Write to the device
-	// (technically a HID report with type 'feature' is send to the device)
-	WriteFeature([]byte) error
-	// Preform an interrupt transfer to the device
-	WriteInterrupt(byte, []byte) (int, error)
 
+	// ReadCh returns a channel that will return input reports from the device.
 	ReadCh() <-chan []byte
-}
-
-// FindDevices iterates through all devices with a given vendor and product id
-func FindDevices(vendor uint16, product uint16) []*DeviceInfo {
-	var result []*DeviceInfo
-	for _, dev := range Devices() {
-		if dev.VendorId == vendor && dev.ProductId == product {
-			result = append(result, dev)
-		}
-	}
-	return result
-}
-
-// FindDevicesByProduct iterates through all devices with a given vendor and product id
-func FindDevicesByProduct(product string) []*DeviceInfo {
-	var result []*DeviceInfo
-
-	for _, dev := range Devices() {
-		if strings.Contains(dev.Product, product) {
-			result = append(result, dev)
-		}
-	}
-
-	return result
 }

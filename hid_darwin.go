@@ -348,16 +348,8 @@ func (dev *osxDevice) setReport(typ C.IOHIDReportType, data []byte) error {
 	return errors.New("device disconnected")
 }
 
-func (dev *osxDevice) WriteFeature(data []byte) error {
-	return dev.setReport(C.kIOHIDReportTypeFeature, data)
-}
-
 func (dev *osxDevice) Write(data []byte) error {
 	return dev.setReport(C.kIOHIDReportTypeOutput, data)
-}
-
-func (dev *osxDevice) WriteInterrupt(endpoint byte, data []byte) (int, error) {
-	return 0, errors.New("WriteInterrupt is not implemented")
 }
 
 func (dev *osxDevice) ReadCh() <-chan []byte {
