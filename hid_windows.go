@@ -218,7 +218,7 @@ func ByPath(devicePath string) (*DeviceInfo, error) {
 }
 
 // Devices returns all HID devices which are connected to the system.
-func Devices() []*DeviceInfo {
+func Devices() ([]*DeviceInfo, error) {
 	var result *DeviceInfo
 	var InterfaceClassGuid C.GUID
 	C.HidD_GetHidGuid(&InterfaceClassGuid)
@@ -239,7 +239,7 @@ func Devices() []*DeviceInfo {
 			result = append(result, di)
 		}
 	}
-	return result
+	return result, nil
 }
 
 // Open openes the device for read / write access.

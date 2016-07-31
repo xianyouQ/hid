@@ -231,7 +231,7 @@ func iterateDevices(action func(device C.IOHIDDeviceRef) bool) cleanupDeviceMana
 	}
 }
 
-func Devices() []*DeviceInfo {
+func Devices() ([]*DeviceInfo, error) {
 	var result []*DeviceInfo
 	iterateDevices(func(device C.IOHIDDeviceRef) bool {
 		result = append(result, &DeviceInfo{
@@ -249,11 +249,15 @@ func Devices() []*DeviceInfo {
 		})
 		return true
 	})()
-	return result
+	return result, nil
 }
 
 func ByPath(path string) (*DeviceInfo, error) {
-	for _, d := range Devices() {
+	devices, err := Devices()
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range devices {
 		if d.Path == path {
 			return d, nil
 		}
