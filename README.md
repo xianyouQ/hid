@@ -1,9 +1,9 @@
 # HID
 
 A Go package to access Human Interface Devices. The platform specific parts of
-this package are heavily based on [Signal 11 - HIDAPI](https://github.com/signal11/hidapi).
+this package are heavily based on [Signal 11's HIDAPI](https://github.com/signal11/hidapi).
 
-### Supported operating systems
+## Supported operating systems
 
 The following operating systems are supported targets 
 (as used by [*$GOOS* environment variable](https://golang.org/doc/install/source#environment))
@@ -12,7 +12,7 @@ The following operating systems are supported targets
 * linux (uses hidraw)
 * windows (uses native Windows HID library)
 
-##### Known quirks for building on Windows 64bit
+## Known quirks for building on Windows 64-bit
 
 For building this HID package, you need to have a gcc.exe in your *%PATH%* environment variable.
 There are two tested GCC toolchains: [tdm-gcc](http://tdm-gcc.tdragon.net/)
@@ -48,6 +48,6 @@ or
 After patching the header file, this package will compile.
 Future releases of the gcc toolchains will surely fix this issue.
 
-### License
+## License
 
 [![License: MIT](https://img.shields.io/:license-MIT-blue.svg)](http://opensource.org/licenses/MIT)
