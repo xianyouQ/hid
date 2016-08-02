@@ -1,255 +1,208 @@
 package hid
 
-// #cgo pkg-config: libusb-1.0
-// #cgo LDFLAGS: -lusb-1.0
-// #include <libusb-1.0/libusb.h>
+// #include <linux/hidraw.h>
 import "C"
 
 import (
-	"errors"
-	"fmt"
-	"reflect"
-	"strings"
-	"unicode/utf16"
+	"bytes"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"sync"
 	"unsafe"
 )
 
+var (
+	ioctlHIDIOCGRDESCSIZE = ioR('H', 0x01, C.sizeof_int)
+	ioctlHIDIOCGRDESC     = ioR('H', 0x02, C.sizeof_struct_hidraw_report_descriptor)
+	ioctlHIDIOCGRAWINFO   = ioR('H', 0x03, C.sizeof_struct_hidraw_devinfo)
+)
+
+func ioctlHIDIOCGRAWNAME(size int) uintptr {
+	return ioR('H', 0x04, uintptr(size))
+}
+
+func ioctlHIDIOCGRAWPHYS(size int) uintptr {
+	return ioR('H', 0x05, uintptr(size))
+}
+
+func ioctlHIDIOCSFEATURE(size int) uintptr {
+	return ioRW('H', 0x06, uintptr(size))
+}
+
+func ioctlHIDIOCGFEATURE(size int) uintptr {
+	return ioRW('H', 0x07, uintptr(size))
+}
+
 type linuxDevice struct {
-	handle *C.libusb_device_handle
-	info   *DeviceInfo
+	f    *os.File
+	info *DeviceInfo
+
+	readSetup sync.Once
+	readCh    chan []byte
 }
 
-func init() {
-	C.libusb_init(nil)
-}
-
-func Devices() []*DeviceInfo {
-	var result []*DeviceInfo
-	var devices **C.struct_libusb_device
-	cnt := C.libusb_get_device_list(nil, &devices)
-	if cnt < 0 {
-		return nil
+func Devices() ([]*DeviceInfo, error) {
+	sys, err := os.Open("/sys/class/hidraw")
+	if err != nil {
+		return nil, err
 	}
-	defer C.libusb_free_device_list(devices, 1)
-	for _, dev := range asSlice(devices, cnt) {
-		di, err := newDeviceInfo(dev)
-		if err != nil {
+	names, err := sys.Readdirnames(0)
+	sys.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	var res []*DeviceInfo
+	for _, dir := range names {
+		path := filepath.Join("/dev", filepath.Base(dir))
+		info, err := getDeviceInfo(path)
+		if os.IsPermission(err) {
 			continue
+		} else if err != nil {
+			return nil, err
 		}
-		result = append(result, di)
+		res = append(res, info)
 	}
 
-	return result
+	return res, nil
+}
+
+func getDeviceInfo(path string) (*DeviceInfo, error) {
+	d := &DeviceInfo{
+		Path: path,
+	}
+
+	dev, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer dev.Close()
+	fd := uintptr(dev.Fd())
+
+	var descSize C.int
+	if err := ioctl(fd, ioctlHIDIOCGRDESCSIZE, uintptr(unsafe.Pointer(&descSize))); err != nil {
+		return nil, err
+	}
+
+	rawDescriptor := C.struct_hidraw_report_descriptor{
+		size: C.__u32(descSize),
+	}
+	if err := ioctl(fd, ioctlHIDIOCGRDESC, uintptr(unsafe.Pointer(&rawDescriptor))); err != nil {
+		return nil, err
+	}
+	d.parseReport(C.GoBytes(unsafe.Pointer(&rawDescriptor.value), descSize))
+
+	var rawInfo C.struct_hidraw_devinfo
+	if err := ioctl(fd, ioctlHIDIOCGRAWINFO, uintptr(unsafe.Pointer(&rawInfo))); err != nil {
+		return nil, err
+	}
+	d.VendorID = uint16(rawInfo.vendor)
+	d.ProductID = uint16(rawInfo.product)
+
+	rawName := make([]byte, 256)
+	if err := ioctl(fd, ioctlHIDIOCGRAWNAME(len(rawName)), uintptr(unsafe.Pointer(&rawName[0]))); err != nil {
+		return nil, err
+	}
+	d.Product = string(rawName[:bytes.IndexByte(rawName, 0)])
+
+	if p, err := filepath.EvalSymlinks(filepath.Join("/sys/class/hidraw", filepath.Base(path), "device")); err == nil {
+		if rawManufacturer, err := ioutil.ReadFile(filepath.Join(p, "/../../manufacturer")); err == nil {
+			d.Manufacturer = string(bytes.TrimRight(rawManufacturer, "\n"))
+		}
+	}
+
+	return d, nil
+}
+
+// very basic report parser that will pull out the usage page, usage, and the
+// sizes of the first input and output reports
+func (d *DeviceInfo) parseReport(b []byte) {
+	var reportSize uint16
+
+	for len(b) > 0 {
+		// read item size, type, and tag
+		size := int(b[0] & 0x03)
+		if size == 3 {
+			size = 4
+		}
+		typ := (b[0] >> 2) & 0x03
+		tag := (b[0] >> 4) & 0x0f
+		b = b[1:]
+
+		if len(b) < size {
+			return
+		}
+
+		// read item value
+		var v uint64
+		for i := 0; i < size; i++ {
+			v += uint64(b[i]) << (8 * uint(i))
+		}
+		b = b[size:]
+
+		switch {
+		case typ == 0 && tag == 8 && d.InputReportLength == 0 && reportSize > 0: // input report type
+			d.InputReportLength = reportSize
+			reportSize = 0
+		case typ == 0 && tag == 9 && d.OutputReportLength == 0 && reportSize > 0: // output report type
+			d.OutputReportLength = reportSize
+			reportSize = 0
+		case typ == 1 && tag == 0: // usage page
+			d.UsagePage = uint16(v)
+		case typ == 1 && tag == 9: // report count
+			reportSize = uint16(v)
+		case typ == 2 && tag == 0 && d.Usage == 0: // usage
+			d.Usage = uint16(v)
+		}
+
+		if d.UsagePage > 0 && d.Usage > 0 && d.InputReportLength > 0 && d.OutputReportLength > 0 {
+			return
+		}
+	}
 }
 
 func ByPath(path string) (*DeviceInfo, error) {
-	for _, d := range Devices() {
-		if d.Path == path {
-			return d, nil
-		}
-	}
-	return nil, errors.New("Device not found")
+	return getDeviceInfo(path)
 }
 
-func (di *DeviceInfo) Open() (Device, error) {
-
-	var devices **C.struct_libusb_device
-	cnt := C.libusb_get_device_list(nil, &devices)
-	if cnt < 0 {
-		return nil, errors.New(fmt.Sprintf("Couldn't open USB device with path=%s, because couldn't enumerate USB devices.", di.Path))
-	}
-	defer C.libusb_free_device_list(devices, 1)
-
-	for _, dev := range asSlice(devices, cnt) {
-		candidate, err := newDeviceInfo(dev)
-		if err != nil {
-			continue
-		}
-		if di.Path == candidate.Path {
-			var handle *C.libusb_device_handle
-			err := C.libusb_open(dev, &handle)
-			if err != 0 {
-				return nil, usbError(err)
-			}
-			dev := &linuxDevice{
-				info:   candidate,
-				handle: handle,
-			}
-			return dev, nil
-		}
-	}
-	return nil, errors.New(fmt.Sprintf("Couldn't open USB device vendor=%4x product=%4x", di.VendorId, di.ProductId))
-}
-
-func (dev *linuxDevice) Close() {
-	if dev.handle != nil {
-		C.libusb_close(dev.handle)
-		dev.handle = nil
-		dev.info = nil
-	}
-}
-
-func (dev *linuxDevice) writeReport(hid_report_type int, data []byte) error {
-	if dev.handle == nil {
-		return errors.New("No USB device opend before.")
-	}
-	if len(data) > 0xffff {
-		return errors.New("data longer than 65535 bytes, means overflow, isn't supported")
-	}
-	if len(data) == 0 {
-		return nil
-	}
-
-	const reportId = 1
-	const index = 0
-	const timeout = 1000
-
-	written := C.libusb_control_transfer(dev.handle,
-		C.uint8_t(ENDPOINT_OUT|RECIPIENT_DEVICE|DT_REPORT|hid_report_type),
-		C.uint8_t(HID_SET_REPORT),
-		C.uint16_t(reportId),
-		C.uint16_t(index),
-		(*C.uchar)(&data[0]),
-		C.uint16_t(len(data)),
-		C.uint(timeout))
-
-	if int(written) == len(data) {
-		return nil
-	}
-	return usbError(written)
-}
-
-func (dev *linuxDevice) WriteInterrupt(endpoint byte, data []byte) (int, error) {
-	if dev.handle == nil {
-		return 0, errors.New("No USB device opend before.")
-	}
-	if len(data) > 0xffff {
-		return 0, errors.New("data longer than 65535 bytes, means overflow, isn't supported")
-	}
-	if len(data) == 0 {
-		return 0, nil
-	}
-	const timeout = 10000
-	var transferred C.int
-	rval := C.libusb_interrupt_transfer(dev.handle,
-		C.uchar(endpoint),
-		(*C.uchar)(&data[0]),
-		C.int(len(data)),
-		&transferred,
-		timeout)
-	if rval != 0 {
-		return 0, usbError(rval)
-	}
-	return int(transferred), nil
-}
-
-func (dev *linuxDevice) WriteFeature(data []byte) error {
-	return dev.writeReport(HID_REPORT_TYPE_FEATURE, data)
-}
-
-func (dev *linuxDevice) Write(data []byte) error {
-	return dev.writeReport(HID_REPORT_TYPE_OUTPUT, data)
-}
-
-func newDeviceInfo(dev *C.libusb_device) (*DeviceInfo, error) {
-	var desc C.struct_libusb_device_descriptor
-	if err := C.libusb_get_device_descriptor(dev, &desc); err < 0 {
-		return nil, usbError(err)
-	}
-	manufacturer, product, err := resolveDescriptors(dev, desc.iManufacturer, desc.iProduct)
-	if err == usbError(C.LIBUSB_ERROR_ACCESS) {
-		manufacturer = "access not allowed"
-		product = "access not allowed"
-	} else if err != nil {
-		return nil, err
-	}
-	path, err := getPath(dev, desc.idVendor, desc.idProduct)
+func (d *DeviceInfo) Open() (Device, error) {
+	f, err := os.OpenFile(d.Path, os.O_RDWR, 0)
 	if err != nil {
 		return nil, err
 	}
-	return &DeviceInfo{
-		Path:          path,
-		VendorId:      uint16(desc.idVendor),
-		ProductId:     uint16(desc.idProduct),
-		VersionNumber: uint16(desc.bcdDevice),
-		Manufacturer:  manufacturer,
-		Product:       product,
-	}, nil
+
+	return &linuxDevice{f: f, info: d}, nil
 }
 
-func resolveDescriptors(dev *C.libusb_device, iManufacturer C.uint8_t, iProduct C.uint8_t) (manufacturer string, product string, e error) {
-	var handle *C.libusb_device_handle
-	err := C.libusb_open(dev, &handle)
-	if err != 0 {
-		return "", "", usbError(err)
-	}
-	if handle != nil {
-		defer C.libusb_close(handle)
-		manufacturerStr, err := getStringDescriptor(handle, iManufacturer)
+func (d *linuxDevice) Close() {
+	d.f.Close()
+}
+
+func (d *linuxDevice) Write(data []byte) error {
+	_, err := d.f.Write(append([]byte{0}, data...))
+	return err
+}
+
+func (d *linuxDevice) ReadCh() <-chan []byte {
+	d.readSetup.Do(func() {
+		d.readCh = make(chan []byte, 30)
+		go d.readThread()
+	})
+	return d.readCh
+}
+
+func (d *linuxDevice) readThread() {
+	defer close(d.readCh)
+	for {
+		buf := make([]byte, d.info.InputReportLength)
+		n, err := d.f.Read(buf)
 		if err != nil {
-			return "", "", err
+			return
 		}
-		productStr, err := getStringDescriptor(handle, iProduct)
-		if err != nil {
-			return "", "", err
+		select {
+		case d.readCh <- buf[:n]:
+		default:
 		}
-		return manufacturerStr, productStr, nil
 	}
-	return "", "", errors.New("Couldn't resolve description string")
-
-}
-
-func getStringDescriptor(dev *C.libusb_device_handle, id C.uint8_t) (string, error) {
-	var buf [128]C.char
-	const langId = 0
-	err := C.libusb_get_string_descriptor(dev, id, C.uint16_t(langId), (*C.uchar)(unsafe.Pointer(&buf[0])), C.int(len(buf)))
-	if err < 0 {
-		return "", usbError(err)
-	}
-	if err < 2 {
-		return "", errors.New("not enough data for USB string descriptor")
-	}
-	l := C.int(buf[0])
-	if l > err {
-		return "", errors.New("USB string descriptor is too short")
-	}
-	b := buf[2:l]
-	uni16 := make([]uint16, len(b)/2)
-	for i := range uni16 {
-		uni16[i] = uint16(b[i*2]) | uint16(b[i*2+1])<<8
-	}
-	return string(utf16.Decode(uni16)), nil
-}
-
-func getPath(dev *C.libusb_device, vendorId C.uint16_t, productId C.uint16_t) (string, error) {
-	numbers, err := getPortNumbers(dev)
-	if err != nil {
-		return "", err
-	}
-	path := fmt.Sprintf("%.4x:%.4x:%s", vendorId, productId, numbers)
-	return path, nil
-}
-
-func getPortNumbers(dev *C.libusb_device) (string, error) {
-	const maxlen = 7 // As per the USB 3.0 specs, the current maximum limit for the depth is 7
-	var numarr [maxlen]C.uint8_t
-	len := C.libusb_get_port_numbers(dev, &numarr[0], maxlen)
-	if len < 0 || len > maxlen {
-		return "", usbError(len)
-	}
-	var numstr []string = make([]string, len)
-	for i := 0; i < int(len); i++ {
-		numstr[i] = fmt.Sprintf("%.2x", numarr[i])
-	}
-	return strings.Join(numstr, "."), nil
-}
-
-func asSlice(devices **C.struct_libusb_device, cnt C.ssize_t) []*C.libusb_device {
-	var device_list []*C.libusb_device
-	*(*reflect.SliceHeader)(unsafe.Pointer(&device_list)) = reflect.SliceHeader{
-		Data: uintptr(unsafe.Pointer(devices)),
-		Len:  int(cnt),
-		Cap:  int(cnt),
-	}
-	return device_list
 }

@@ -9,7 +9,7 @@ The following operating systems are supported targets
 (as used by [*$GOOS* environment variable](https://golang.org/doc/install/source#environment))
 
 * darwin (uses native IOKit framework)
-* linux (uses libusb 1.0+)
+* linux (uses hidraw)
 * windows (uses native Windows HID library)
 
 ##### Known quirks for building on Windows 64bit
