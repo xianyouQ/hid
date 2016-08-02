@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
 	"sync"
 	"unsafe"
 )
@@ -359,6 +360,7 @@ func (dev *osxDevice) ReadCh() <-chan []byte {
 func (dev *osxDevice) startReadThread() {
 	dev.readCh = make(chan []byte, 30)
 	go func() {
+		runtime.LockOSThread()
 		dev.runLoop = C.CFRunLoopGetCurrent()
 		C.IOHIDDeviceScheduleWithRunLoop(dev.osDevice, dev.runLoop, C.kCFRunLoopDefaultMode)
 		C.IOHIDDeviceRegisterInputReportCallback(dev.osDevice, (*C.uint8_t)(dev.readBuf), C.CFIndex(dev.readBufLen), (C.IOHIDReportCallback)(unsafe.Pointer(C.reportCallback)), unsafe.Pointer(dev.osDevice))
