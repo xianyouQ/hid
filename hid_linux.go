@@ -180,7 +180,7 @@ func (d *linuxDevice) Close() {
 }
 
 func (d *linuxDevice) Write(data []byte) error {
-	_, err := d.f.Write(append([]byte{0}, data...))
+	_, err := d.f.Write(data)
 	return err
 }
 

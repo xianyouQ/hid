@@ -24,9 +24,12 @@ type Device interface {
 	// Close closes the device and associated resources.
 	Close()
 
-	// Write writes an output report to device.
+	// Write writes an output report to device. The first byte must be the
+	// report number to write, zero if the device does not use numbered reports.
 	Write([]byte) error
 
 	// ReadCh returns a channel that will be sent input reports from the device.
+	// If the device uses numbered reports, the first byte will be the report
+	// number.
 	ReadCh() <-chan []byte
 }
