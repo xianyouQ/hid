@@ -306,7 +306,7 @@ func deviceUnplugged(osdev C.IOHIDDeviceRef, result C.IOReturn, dev unsafe.Point
 func (dev *osxDevice) Close() {
 	if !dev.disconnected && dev.readCh != nil {
 		C.IOHIDDeviceRegisterInputReportCallback(dev.osDevice, (*C.uint8_t)(dev.readBuf), C.CFIndex(dev.readBufLen), nil, unsafe.Pointer(dev.osDevice))
-		C.IOHIDDeviceUnscheduleFromRunLoop(dev.osDevice, dev.runLoop, C.kCFRunLoopCommonModes)
+		C.IOHIDDeviceUnscheduleFromRunLoop(dev.osDevice, dev.runLoop, C.kCFRunLoopDefaultMode)
 		C.CFRunLoopStop(dev.runLoop)
 		C.free(dev.readBuf)
 	}
@@ -360,7 +360,7 @@ func (dev *osxDevice) startReadThread() {
 	dev.readCh = make(chan []byte, 30)
 	go func() {
 		dev.runLoop = C.CFRunLoopGetCurrent()
-		C.IOHIDDeviceScheduleWithRunLoop(dev.osDevice, dev.runLoop, C.kCFRunLoopCommonModes)
+		C.IOHIDDeviceScheduleWithRunLoop(dev.osDevice, dev.runLoop, C.kCFRunLoopDefaultMode)
 		C.IOHIDDeviceRegisterInputReportCallback(dev.osDevice, (*C.uint8_t)(dev.readBuf), C.CFIndex(dev.readBufLen), (C.IOHIDReportCallback)(unsafe.Pointer(C.reportCallback)), unsafe.Pointer(dev.osDevice))
 		C.CFRunLoopRun()
 		close(dev.readCh)
