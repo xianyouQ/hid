@@ -277,7 +277,7 @@ func (di *DeviceInfo) Open() (Device, error) {
 				deviceCtxMtx.Lock()
 				deviceCtx[device] = dev
 				deviceCtxMtx.Unlock()
-				C.IOHIDDeviceRegisterRemovalCallback(device, (C.IOHIDCallback)(unsafe.Pointer(C.deviceUnplugged)), nil)
+				C.IOHIDDeviceRegisterRemovalCallback(device, (C.IOHIDCallback)(unsafe.Pointer(C.deviceUnplugged)), unsafe.Pointer(device))
 			} else {
 				err = ioReturnToErr(res)
 			}
@@ -297,7 +297,7 @@ func (di *DeviceInfo) Open() (Device, error) {
 //export deviceUnplugged
 func deviceUnplugged(osdev C.IOHIDDeviceRef, result C.IOReturn, dev unsafe.Pointer) {
 	deviceCtxMtx.Lock()
-	od := deviceCtx[osdev]
+	od := deviceCtx[C.IOHIDDeviceRef(dev)]
 	deviceCtxMtx.Unlock()
 	od.disconnected = true
 	od.Close()
