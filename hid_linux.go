@@ -198,6 +198,7 @@ func (d *linuxDevice) readThread() {
 		buf := make([]byte, d.info.InputReportLength)
 		n, err := d.f.Read(buf)
 		if err != nil {
+			d.readErr = err
 			return
 		}
 		select {

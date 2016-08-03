@@ -35,109 +35,110 @@ func ioReturnToErr(ret C.IOReturn) error {
 	case C.kIOReturnSuccess:
 		return nil
 	case C.kIOReturnError:
-		return errors.New("general error ")
+		return errors.New("hid: general error")
 	case C.kIOReturnNoMemory:
-		return errors.New("can't allocate memory")
+		return errors.New("hid: can't allocate memory")
 	case C.kIOReturnNoResources:
-		return errors.New("resource shortage")
+		return errors.New("hid: resource shortage")
 	case C.kIOReturnIPCError:
-		return errors.New("error during IPC")
+		return errors.New("hid: error during IPC")
 	case C.kIOReturnNoDevice:
-		return errors.New("no such device")
+		return errors.New("hid: no such device")
 	case C.kIOReturnNotPrivileged:
-		return errors.New("privilege violation")
+		return errors.New("hid: privilege violation")
 	case C.kIOReturnBadArgument:
-		return errors.New("invalid argument")
+		return errors.New("hid: invalid argument")
 	case C.kIOReturnLockedRead:
-		return errors.New("device read locked")
+		return errors.New("hid: device read locked")
 	case C.kIOReturnLockedWrite:
-		return errors.New("device write locked")
+		return errors.New("hid: device write locked")
 	case C.kIOReturnExclusiveAccess:
-		return errors.New("exclusive access and device already open")
+		return errors.New("hid: exclusive access and device already open")
 	case C.kIOReturnBadMessageID:
-		return errors.New("sent/received messages had different msg_id")
+		return errors.New("hid: sent/received messages had different msg_id")
 	case C.kIOReturnUnsupported:
-		return errors.New("unsupported function")
+		return errors.New("hid: unsupported function")
 	case C.kIOReturnVMError:
-		return errors.New("misc. VM failure")
+		return errors.New("hid: misc. VM failure")
 	case C.kIOReturnInternalError:
-		return errors.New("internal error")
+		return errors.New("hid: internal error")
 	case C.kIOReturnIOError:
-		return errors.New("General I/O error")
+		return errors.New("hid: general I/O error")
 	case C.kIOReturnCannotLock:
-		return errors.New("can't acquire lock")
+		return errors.New("hid: can't acquire lock")
 	case C.kIOReturnNotOpen:
-		return errors.New("device not open")
+		return errors.New("hid: device not open")
 	case C.kIOReturnNotReadable:
-		return errors.New("read not supported")
+		return errors.New("hid: read not supported")
 	case C.kIOReturnNotWritable:
-		return errors.New("write not supported")
+		return errors.New("hid: write not supported")
 	case C.kIOReturnNotAligned:
-		return errors.New("alignment error")
+		return errors.New("hid: alignment error")
 	case C.kIOReturnBadMedia:
-		return errors.New("Media Error")
+		return errors.New("hid: media Error")
 	case C.kIOReturnStillOpen:
-		return errors.New("device(s) still open")
+		return errors.New("hid: device(s) still open")
 	case C.kIOReturnRLDError:
-		return errors.New("rld failure")
+		return errors.New("hid: rld failure")
 	case C.kIOReturnDMAError:
-		return errors.New("DMA failure")
+		return errors.New("hid: DMA failure")
 	case C.kIOReturnBusy:
-		return errors.New("Device Busy")
+		return errors.New("hid: device Busy")
 	case C.kIOReturnTimeout:
-		return errors.New("I/O Timeout")
+		return errors.New("hid: i/o timeout")
 	case C.kIOReturnOffline:
-		return errors.New("device offline")
+		return errors.New("hid: device offline")
 	case C.kIOReturnNotReady:
-		return errors.New("not ready")
+		return errors.New("hid: not ready")
 	case C.kIOReturnNotAttached:
-		return errors.New("device not attached")
+		return errors.New("hid: device not attached")
 	case C.kIOReturnNoChannels:
-		return errors.New("no DMA channels left")
+		return errors.New("hid: no DMA channels left")
 	case C.kIOReturnNoSpace:
-		return errors.New("no space for data")
+		return errors.New("hid: no space for data")
 	case C.kIOReturnPortExists:
-		return errors.New("port already exists")
+		return errors.New("hid: port already exists")
 	case C.kIOReturnCannotWire:
-		return errors.New("can't wire down physical memory")
+		return errors.New("hid: can't wire down physical memory")
 	case C.kIOReturnNoInterrupt:
-		return errors.New("no interrupt attached")
+		return errors.New("hid: no interrupt attached")
 	case C.kIOReturnNoFrames:
-		return errors.New("no DMA frames enqueued")
+		return errors.New("hid: no DMA frames enqueued")
 	case C.kIOReturnMessageTooLarge:
-		return errors.New("oversized msg received on interrupt port")
+		return errors.New("hid: oversized msg received on interrupt port")
 	case C.kIOReturnNotPermitted:
-		return errors.New("not permitted")
+		return errors.New("hid: not permitted")
 	case C.kIOReturnNoPower:
-		return errors.New("no power to device")
+		return errors.New("hid: no power to device")
 	case C.kIOReturnNoMedia:
-		return errors.New("media not present")
+		return errors.New("hid: media not present")
 	case C.kIOReturnUnformattedMedia:
-		return errors.New("media not formatted")
+		return errors.New("hid: media not formatted")
 	case C.kIOReturnUnsupportedMode:
-		return errors.New("no such mode")
+		return errors.New("hid: no such mode")
 	case C.kIOReturnUnderrun:
-		return errors.New("data underrun")
+		return errors.New("hid: data underrun")
 	case C.kIOReturnOverrun:
-		return errors.New("data overrun")
+		return errors.New("hid: data overrun")
 	case C.kIOReturnDeviceError:
-		return errors.New("the device is not working properly!")
+		return errors.New("hid: the device is not working properly!")
 	case C.kIOReturnNoCompletion:
-		return errors.New("a completion routine is required")
+		return errors.New("hid: a completion routine is required")
 	case C.kIOReturnAborted:
-		return errors.New("operation aborted")
+		return errors.New("hid: operation aborted")
 	case C.kIOReturnNoBandwidth:
-		return errors.New("bus bandwidth would be exceeded")
+		return errors.New("hid: bus bandwidth would be exceeded")
 	case C.kIOReturnNotResponding:
-		return errors.New("device not responding")
+		return errors.New("hid: device not responding")
 	case C.kIOReturnIsoTooOld:
-		return errors.New("isochronous I/O request for distant past!")
+		return errors.New("hid: isochronous I/O request for distant past!")
 	case C.kIOReturnIsoTooNew:
-		return errors.New("isochronous I/O request for distant future")
+		return errors.New("hid: isochronous I/O request for distant future")
 	case C.kIOReturnNotFound:
-		return errors.New("data was not found")
+		return errors.New("hid: data was not found")
+	default:
+		return errors.New("hid: unknown error")
 	}
-	return errors.New("Unknown error")
 }
 
 var deviceCtxMtx sync.Mutex
@@ -145,15 +146,15 @@ var deviceCtx = make(map[C.IOHIDDeviceRef]*osxDevice)
 
 type cleanupDeviceManagerFn func()
 type osxDevice struct {
+	mtx          sync.Mutex
 	osDevice     C.IOHIDDeviceRef
 	disconnected bool
 	closeDM      cleanupDeviceManagerFn
 
-	readSetup  sync.Once
-	readCh     chan []byte
-	readBufLen uint16
-	readBuf    unsafe.Pointer
-	runLoop    C.CFRunLoopRef
+	readSetup sync.Once
+	readCh    chan []byte
+	readBuf   []byte
+	runLoop   C.CFRunLoopRef
 }
 
 func cfstring(s string) C.CFStringRef {
@@ -186,15 +187,15 @@ func gostring(cfs C.CFStringRef) string {
 
 func getIntProp(device C.IOHIDDeviceRef, key C.CFStringRef) int32 {
 	var value int32
-
 	ref := C.IOHIDDeviceGetProperty(device, key)
-	if ref != nil {
-		if C.CFGetTypeID(ref) == C.CFNumberGetTypeID() {
-			C.CFNumberGetValue(C.CFNumberRef(ref), C.kCFNumberSInt32Type, unsafe.Pointer(&value))
-			return value
-		}
+	if ref == nil {
+		return 0
 	}
-	return 0
+	if C.CFGetTypeID(ref) != C.CFNumberGetTypeID() {
+		return 0
+	}
+	C.CFNumberGetValue(C.CFNumberRef(ref), C.kCFNumberSInt32Type, unsafe.Pointer(&value))
+	return value
 }
 
 func getStringProp(device C.IOHIDDeviceRef, key C.CFStringRef) string {
@@ -262,11 +263,11 @@ func ByPath(path string) (*DeviceInfo, error) {
 			return d, nil
 		}
 	}
-	return nil, errors.New("Device not found")
+	return nil, errors.New("hid: device not found")
 }
 
 func (di *DeviceInfo) Open() (Device, error) {
-	err := errors.New("device not found")
+	err := errors.New("hid: device not found")
 	var dev *osxDevice
 	closeDM := iterateDevices(func(device C.IOHIDDeviceRef) bool {
 		if getPath(device) == di.Path {
@@ -288,8 +289,7 @@ func (di *DeviceInfo) Open() (Device, error) {
 	})
 	if dev != nil {
 		dev.closeDM = closeDM
-		dev.readBufLen = di.InputReportLength
-		dev.readBuf = C.malloc(C.size_t(dev.readBufLen))
+		dev.readBuf = make([]byte, int(di.InputReportLength))
 	}
 
 	return dev, err
@@ -300,52 +300,60 @@ func deviceUnplugged(osdev C.IOHIDDeviceRef, result C.IOReturn, dev unsafe.Point
 	deviceCtxMtx.Lock()
 	od := deviceCtx[C.IOHIDDeviceRef(dev)]
 	deviceCtxMtx.Unlock()
-	od.disconnected = true
-	od.Close()
+	od.close(true)
 }
 
 func (dev *osxDevice) Close() {
-	if !dev.disconnected && dev.readCh != nil {
-		C.IOHIDDeviceRegisterInputReportCallback(dev.osDevice, (*C.uint8_t)(dev.readBuf), C.CFIndex(dev.readBufLen), nil, unsafe.Pointer(dev.osDevice))
-		C.IOHIDDeviceUnscheduleFromRunLoop(dev.osDevice, dev.runLoop, C.kCFRunLoopDefaultMode)
-		C.CFRunLoopStop(dev.runLoop)
-		C.free(dev.readBuf)
+	dev.close(false)
+}
+
+func (dev *osxDevice) close(disconnected bool) {
+	dev.mtx.Lock()
+	defer dev.mtx.Unlock()
+
+	if dev.disconnected {
+		return
 	}
-	if !dev.disconnected {
+
+	if dev.readCh != nil {
+		if !disconnected {
+			C.IOHIDDeviceRegisterInputReportCallback(dev.osDevice, (*C.uint8_t)(&dev.readBuf[0]), C.CFIndex(len(dev.readBuf)), nil, unsafe.Pointer(dev.osDevice))
+			C.IOHIDDeviceUnscheduleFromRunLoop(dev.osDevice, dev.runLoop, C.kCFRunLoopDefaultMode)
+		}
+		C.CFRunLoopStop(dev.runLoop)
+	}
+	if !disconnected {
 		C.IOHIDDeviceRegisterRemovalCallback(dev.osDevice, nil, nil)
 		C.IOHIDDeviceClose(dev.osDevice, C.kIOHIDOptionsTypeSeizeDevice)
-		dev.disconnected = true
 	}
-	if dev.osDevice != nil {
-		C.CFRelease(C.CFTypeRef(dev.osDevice))
-		dev.osDevice = nil
-		deviceCtxMtx.Lock()
-		delete(deviceCtx, dev.osDevice)
-		deviceCtxMtx.Unlock()
-	}
-	if dev.closeDM != nil {
-		dev.closeDM()
-		dev.closeDM = nil
-	}
+
+	deviceCtxMtx.Lock()
+	delete(deviceCtx, dev.osDevice)
+	deviceCtxMtx.Unlock()
+	C.CFRelease(C.CFTypeRef(dev.osDevice))
+	dev.osDevice = nil
+	dev.closeDM()
+	dev.disconnected = true
 }
 
 func (dev *osxDevice) setReport(typ C.IOHIDReportType, data []byte) error {
-	var reportNo int32 = int32(data[0])
+	dev.mtx.Lock()
+	defer dev.mtx.Unlock()
+
+	if dev.disconnected {
+		return errors.New("hid: device disconnected")
+	}
+
+	reportNo := int32(data[0])
 	if reportNo == 0 {
 		data = data[1:]
 	}
 
-	if !dev.disconnected {
-		res := C.IOHIDDeviceSetReport(dev.osDevice, typ, C.CFIndex(reportNo), (*C.uint8_t)(&data[0]), C.CFIndex(len(data)))
-
-		if res == C.kIOReturnSuccess {
-			return nil
-		} else {
-			return ioReturnToErr(res)
-		}
+	res := C.IOHIDDeviceSetReport(dev.osDevice, typ, C.CFIndex(reportNo), (*C.uint8_t)(&data[0]), C.CFIndex(len(data)))
+	if res != C.kIOReturnSuccess {
+		return ioReturnToErr(res)
 	}
-
-	return errors.New("device disconnected")
+	return nil
 }
 
 func (dev *osxDevice) Write(data []byte) error {
@@ -358,12 +366,17 @@ func (dev *osxDevice) ReadCh() <-chan []byte {
 }
 
 func (dev *osxDevice) startReadThread() {
+	dev.mtx.Lock()
 	dev.readCh = make(chan []byte, 30)
+	dev.mtx.Unlock()
+
 	go func() {
 		runtime.LockOSThread()
+		dev.mtx.Lock()
 		dev.runLoop = C.CFRunLoopGetCurrent()
 		C.IOHIDDeviceScheduleWithRunLoop(dev.osDevice, dev.runLoop, C.kCFRunLoopDefaultMode)
-		C.IOHIDDeviceRegisterInputReportCallback(dev.osDevice, (*C.uint8_t)(dev.readBuf), C.CFIndex(dev.readBufLen), (C.IOHIDReportCallback)(unsafe.Pointer(C.reportCallback)), unsafe.Pointer(dev.osDevice))
+		C.IOHIDDeviceRegisterInputReportCallback(dev.osDevice, (*C.uint8_t)(&dev.readBuf[0]), C.CFIndex(len(dev.readBuf)), (C.IOHIDReportCallback)(unsafe.Pointer(C.reportCallback)), unsafe.Pointer(dev.osDevice))
+		dev.mtx.Unlock()
 		C.CFRunLoopRun()
 		close(dev.readCh)
 	}()
@@ -372,8 +385,11 @@ func (dev *osxDevice) startReadThread() {
 //export reportCallback
 func reportCallback(context unsafe.Pointer, result C.IOReturn, sender unsafe.Pointer, reportType C.IOHIDReportType, reportID uint32, report *C.uint8_t, reportLength C.CFIndex) {
 	deviceCtxMtx.Lock()
-	dev := deviceCtx[(C.IOHIDDeviceRef)(context)]
+	dev, ok := deviceCtx[(C.IOHIDDeviceRef)(context)]
 	deviceCtxMtx.Unlock()
+	if !ok {
+		return
+	}
 	data := C.GoBytes(unsafe.Pointer(report), C.int(reportLength))
 
 	// readCh is buffered, drop the data if we can't send to avoid blocking the
