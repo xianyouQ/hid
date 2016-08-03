@@ -15,6 +15,7 @@ import "C"
 
 import (
 	"errors"
+	"sync"
 	"syscall"
 	"unsafe"
 )
@@ -22,6 +23,10 @@ import (
 type winDevice struct {
 	handle syscall.Handle
 	info   *DeviceInfo
+
+	readSetup sync.Once
+	readCh    chan []byte
+	readOl    *syscall.Overlapped
 }
 
 // returns the casted handle of the device
@@ -35,18 +40,26 @@ func (d *winDevice) isValid() bool {
 }
 
 func (d *winDevice) Close() {
+	// cancel any pending reads and unblock read loop
+	C.CancelIo(d.h())
+	C.SetEvent(C.HANDLE(unsafe.Pointer(d.readOl.HEvent)))
+	syscall.CloseHandle(d.readOl.HEvent)
+
 	syscall.CloseHandle(d.handle)
 	d.handle = syscall.InvalidHandle
 }
 
 func (d *winDevice) Write(data []byte) error {
 	// first make sure we send the correct amount of data to the device
-	outSize := int(d.info.OutputReportLength)
-	buffer := make([]byte, outSize, outSize)
-	copy(buffer, data)
+	outSize := int(d.info.OutputReportLength + 1)
+	if len(data) != outSize {
+		buf := make([]byte, outSize)
+		copy(buf, data)
+		data = buf
+	}
 
 	ol := new(syscall.Overlapped)
-	if err := syscall.WriteFile(d.handle, buffer, nil, ol); err != nil {
+	if err := syscall.WriteFile(d.handle, data, nil, ol); err != nil {
 		// IO Pending is ok we simply wait for it to finish a few lines below
 		// all other errors should be reported.
 		if err != syscall.ERROR_IO_PENDING {
@@ -103,7 +116,13 @@ func openDevice(info *DeviceInfo, enumerate bool) (*winDevice, error) {
 	if err != nil {
 		return nil, err
 	} else {
-		return &winDevice{handle: hFile, info: info}, nil
+		return &winDevice{
+			handle: hFile,
+			info:   info,
+			readOl: &syscall.Overlapped{
+				HEvent: syscall.Handle(C.CreateEvent(nil, C.FALSE, C.FALSE, nil)),
+			},
+		}, nil
 	}
 }
 
@@ -190,8 +209,10 @@ func ByPath(devicePath string) (*DeviceInfo, error) {
 		var caps C.HIDP_CAPS
 
 		if C.HidP_GetCaps(preparsedData, &caps) == C.HIDP_STATUS_SUCCESS {
-			devInfo.InputReportLength = uint16(caps.InputReportByteLength)
-			devInfo.OutputReportLength = uint16(caps.OutputReportByteLength)
+			devInfo.UsagePage = uint16(caps.UsagePage)
+			devInfo.Usage = uint16(caps.Usage)
+			devInfo.InputReportLength = uint16(caps.InputReportByteLength - 1)
+			devInfo.OutputReportLength = uint16(caps.OutputReportByteLength - 1)
 		}
 
 		C.HidD_FreePreparsedData(preparsedData)
@@ -202,7 +223,7 @@ func ByPath(devicePath string) (*DeviceInfo, error) {
 
 // Devices returns all HID devices which are connected to the system.
 func Devices() ([]*DeviceInfo, error) {
-	var result *DeviceInfo
+	var result []*DeviceInfo
 	var InterfaceClassGuid C.GUID
 	C.HidD_GetHidGuid(&InterfaceClassGuid)
 	deviceInfoSet := C.SetupDiGetClassDevsA(&InterfaceClassGuid, nil, nil, C.DIGCF_PRESENT|C.DIGCF_DEVICEINTERFACE)
@@ -241,4 +262,52 @@ func (di *DeviceInfo) Open() (Device, error) {
 		}
 		return nil, err
 	}
+}
+
+func (d *winDevice) ReadCh() <-chan []byte {
+	d.readSetup.Do(func() {
+		d.readCh = make(chan []byte, 30)
+		go d.readThread()
+	})
+	return d.readCh
+}
+
+func (d *winDevice) readThread() {
+	defer close(d.readCh)
+
+	for {
+		buf := make([]byte, d.info.InputReportLength+1)
+		C.ResetEvent(C.HANDLE(unsafe.Pointer(d.readOl.HEvent)))
+
+		if err := syscall.ReadFile(d.handle, buf, nil, d.readOl); err != nil {
+			if err != syscall.ERROR_IO_PENDING {
+				return
+			}
+		}
+
+		// Wait for the read to finish
+		res := C.WaitForSingleObject(C.HANDLE(unsafe.Pointer(d.readOl.HEvent)), C.INFINITE)
+		if res != C.WAIT_OBJECT_0 {
+			return
+		}
+
+		var n C.DWORD
+		if C.GetOverlappedResult(d.h(), (*C.OVERLAPPED)((unsafe.Pointer)(d.readOl)), &n, C.TRUE) == 0 {
+			return
+		}
+		if n == 0 {
+			return
+		}
+
+		if buf[0] == 0 {
+			// Report numbers are not being used, so remove zero to match other platforms
+			buf = buf[1:]
+		}
+
+		select {
+		case d.readCh <- buf[:int(n-1)]:
+		default:
+		}
+	}
+
 }
