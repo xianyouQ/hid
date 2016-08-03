@@ -153,6 +153,7 @@ type osxDevice struct {
 
 	readSetup sync.Once
 	readCh    chan []byte
+	readErr   error
 	readBuf   []byte
 	runLoop   C.CFRunLoopRef
 }
@@ -300,10 +301,12 @@ func deviceUnplugged(osdev C.IOHIDDeviceRef, result C.IOReturn, dev unsafe.Point
 	deviceCtxMtx.Lock()
 	od := deviceCtx[C.IOHIDDeviceRef(dev)]
 	deviceCtxMtx.Unlock()
+	od.readErr = errors.New("hid: device unplugged")
 	od.close(true)
 }
 
 func (dev *osxDevice) Close() {
+	dev.readErr = errors.New("hid: device closed")
 	dev.close(false)
 }
 
@@ -380,6 +383,10 @@ func (dev *osxDevice) startReadThread() {
 		C.CFRunLoopRun()
 		close(dev.readCh)
 	}()
+}
+
+func (dev *osxDevice) ReadError() error {
+	return dev.readErr
 }
 
 //export reportCallback

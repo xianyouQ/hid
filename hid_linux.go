@@ -39,6 +39,7 @@ type linuxDevice struct {
 	info *DeviceInfo
 
 	readSetup sync.Once
+	readErr   error
 	readCh    chan []byte
 }
 
@@ -190,6 +191,10 @@ func (d *linuxDevice) ReadCh() <-chan []byte {
 		go d.readThread()
 	})
 	return d.readCh
+}
+
+func (d *linuxDevice) ReadError() error {
+	return d.readErr
 }
 
 func (d *linuxDevice) readThread() {

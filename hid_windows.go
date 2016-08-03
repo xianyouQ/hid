@@ -15,6 +15,7 @@ import "C"
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -26,6 +27,7 @@ type winDevice struct {
 
 	readSetup sync.Once
 	readCh    chan []byte
+	readErr   error
 	readOl    *syscall.Overlapped
 }
 
@@ -41,6 +43,7 @@ func (d *winDevice) isValid() bool {
 
 func (d *winDevice) Close() {
 	// cancel any pending reads and unblock read loop
+	d.readErr = errors.New("hid: device closed")
 	C.CancelIo(d.h())
 	C.SetEvent(C.HANDLE(unsafe.Pointer(d.readOl.HEvent)))
 	syscall.CloseHandle(d.readOl.HEvent)
@@ -272,6 +275,10 @@ func (d *winDevice) ReadCh() <-chan []byte {
 	return d.readCh
 }
 
+func (d *winDevice) ReadError() error {
+	return d.readErr
+}
+
 func (d *winDevice) readThread() {
 	defer close(d.readCh)
 
@@ -281,6 +288,9 @@ func (d *winDevice) readThread() {
 
 		if err := syscall.ReadFile(d.handle, buf, nil, d.readOl); err != nil {
 			if err != syscall.ERROR_IO_PENDING {
+				if d.readErr == nil {
+					d.readErr = err
+				}
 				return
 			}
 		}
@@ -288,14 +298,23 @@ func (d *winDevice) readThread() {
 		// Wait for the read to finish
 		res := C.WaitForSingleObject(C.HANDLE(unsafe.Pointer(d.readOl.HEvent)), C.INFINITE)
 		if res != C.WAIT_OBJECT_0 {
+			if d.readErr == nil {
+				d.readErr = fmt.Errorf("hid: unexpected read wait state %d", res)
+			}
 			return
 		}
 
 		var n C.DWORD
-		if C.GetOverlappedResult(d.h(), (*C.OVERLAPPED)((unsafe.Pointer)(d.readOl)), &n, C.TRUE) == 0 {
+		if r := C.GetOverlappedResult(d.h(), (*C.OVERLAPPED)((unsafe.Pointer)(d.readOl)), &n, C.TRUE); r == 0 {
+			if d.readErr == nil {
+				d.readErr = fmt.Errorf("hid: unexpected read result state %d", r)
+			}
 			return
 		}
 		if n == 0 {
+			if d.readErr == nil {
+				d.readErr = errors.New("hid: zero byte read")
+			}
 			return
 		}
 

@@ -32,4 +32,8 @@ type Device interface {
 	// If the device uses numbered reports, the first byte will be the report
 	// number.
 	ReadCh() <-chan []byte
+
+	// ReadError returns the read error, if any after the channel returned from
+	// ReadCh has been closed.
+	ReadError() error
 }
