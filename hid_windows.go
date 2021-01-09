@@ -103,7 +103,7 @@ func getCString(fnCall callCFn) string {
 
 func openDevice(info *DeviceInfo, enumerate bool) (*winDevice, error) {
 	access := uint32(syscall.GENERIC_WRITE | syscall.GENERIC_READ)
-	shareMode := uint32(syscall.FILE_SHARE_READ)
+	shareMode := uint32(syscall.FILE_SHARE_READ | syscall.FILE_SHARE_WRITE)
 	if enumerate {
 		// if we just need a handle to get the device properties
 		// we should not claim exclusive access on the device
